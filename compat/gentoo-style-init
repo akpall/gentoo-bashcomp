@@ -1,27 +1,39 @@
-# Gentoo init.d completion
+# Gentoo init.d completion -*- sh -*-
 #
 # $Id$
 #
-# Copyright 1999-2009 Gentoo Authors
+# Copyright 1999-2024 Gentoo Authors
 # Distributed under the terms of the GNU General Public License, v2 or later
 
-_gentoo_style_init()
-{
-    local script="${COMP_WORDS[0]}"
-    local cur="${COMP_WORDS[$COMP_CWORD]}"
+_gentoo_style_init() {
+    # shellcheck disable=SC2034
+    local cur prev words cword comp_args
+    _comp_initialize -n = -- "$@" || return
 
-    if [[ ( -f "${script}" || -h "${script}" ) && -r "${script}" ]] \
-    && [[ "${script}" != *.sh ]] \
-    && [[ "$(head -n 1 "${script}")" = "#!/sbin/runscript" ]]
+    local line
+    if (( cword == 1 )) \
+	   && [[ "${prev}" != *.sh \
+	   && -r "${prev}" && -f "${prev}" ]] \
+	   && read -r line < "${prev}" \
+	   && [[ "${line}" = "#!/sbin/openrc-run" ]]
     then
-    [[ $COMP_CWORD -gt 1 ]] && return 1
-    COMPREPLY=($(opts="start stop status restart pause zap ineed needsme iuse usesme broken"; \
-            eval "$(grep '^opts=' "${script}")"; echo "${opts}"))
-    [[ -n "$COMPREPLY" ]] || COMPREPLY=(start stop restart zap)
-    COMPREPLY=($(compgen -W "${COMPREPLY[*]}" -- "${cur}"))
-    else
-    COMPREPLY=($(compgen -o default -- "${cur}"))
+	local opts=(
+	    "broken"
+	    "describe"
+	    "ineed"
+	    "iuse"
+	    "needsme"
+	    "pause"
+	    "restart"
+	    "start"
+	    "status"
+	    "stop"
+	    "usesme"
+	    "zap"
+	)
+	opts+=( $(awk -F'(' '/^[^_]+\(\) {/{print $1}' "${prev}") )
+
+	_comp_compgen -- -W "${opts[*]}"
     fi
-    return 0
-}
-complete -F _gentoo_style_init @GENTOO_PORTAGE_EPREFIX@/etc/init.d/*
+} &&
+    complete -F _gentoo_style_init @GENTOO_PORTAGE_EPREFIX@/etc/init.d/*
